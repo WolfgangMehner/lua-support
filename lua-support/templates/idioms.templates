@@ -1,0 +1,124 @@
+§ =============================================================
+§  Idioms
+§ =============================================================
+
+§ -------------------------------------------------------------
+§  Resources
+§ -------------------------------------------------------------
+
+IncludeFile( 'library_5_1.templates' )
+IncludeFile( 'library_5_2.templates' )
+§IncludeFile( 'library_5_3.templates' )
+
+§ -------------------------------------------------------------
+§  Function Definition
+§ -------------------------------------------------------------
+
+== Idioms.function definition == below, map:if, sc:f ==
+function |?FUNCTION_NAME| ( <CURSOR>|PARAMETER_LIST| )
+	<SPLIT>{-FUNCTION_BODY-}
+end  -----  end of function |FUNCTION_NAME|  -----
+
+== ENDTEMPLATE ==
+
+§ -------------------------------------------------------------
+§  Error Handling
+§ -------------------------------------------------------------
+
+== Idioms.argument error == below, map:iea, sc:e ==
+error ( 'bad argument #<CURSOR> to \'|?FUNCTION_NAME|\' ({+MSG+})', 2 )
+== Idioms.type error == below, map:iet, sc:e ==
+error ( 'bad argument #<CURSOR> to \'|?FUNCTION_NAME|\' ({+TYPE+} expected, got '..type( {+VAR+} )..')', 2 )
+== ENDTEMPLATE ==
+
+§ -------------------------------------------------------------
+§  Function Calls
+§ -------------------------------------------------------------
+
+== SEP: Idioms.sep_std_lib ==
+
+§ use "default" style as well,
+§ so this template is used as a fall-back for other styles
+== USE STYLES : default, Lua_51 ==
+
+== Idioms.library functions == insert, map:il, sc:l ==
+|PickList( 'lua function', 'idioms_func_5_1' )|
+<CURSOR>|KEY| ( |VALUE| )
+== Idioms.library variables == expandmenu, insert, map:iv, sc:v ==
+|PickList( 'lua variable', 'idioms_var_5_1' )|
+|PICK|<CURSOR>
+== ENDTEMPLATE ==
+
+== ENDSTYLES ==
+
+== USE STYLES : Lua_52 ==
+
+== Idioms.library functions == insert, map:il, sc:l ==
+|PickList( 'lua function', 'idioms_func_5_2' )|
+<CURSOR>|KEY| ( |VALUE| )
+== Idioms.library variables == expandmenu, insert, map:iv, sc:v ==
+|PickList( 'lua variable', 'idioms_var_5_2' )|
+|PICK|<CURSOR>
+== ENDTEMPLATE ==
+
+== ENDSTYLES ==
+
+§== USE STYLES : Lua_53 ==
+§
+§== Idioms.library functions == insert, map:il, sc:l ==
+§|PickList( 'lua function', 'idioms_func_5_3' )|
+§<CURSOR>|KEY| ( |VALUE| )
+§== Idioms.library variables == expandmenu, insert, map:iv, sc:v ==
+§|PickList( 'lua variable', 'idioms_var_5_3' )|
+§|PICK|<CURSOR>
+§== ENDTEMPLATE ==
+§
+§== ENDSTYLES ==
+
+§ -------------------------------------------------------------
+§  Iterators
+§ -------------------------------------------------------------
+
+== LIST: idioms_iterators == hash ==
+	'ipairs'        : 'idx, val in ipairs ( {+TABLE+} )',
+	'pairs'         : 'key, val in pairs ( {+TABLE+} )',
+	'file:lines'    : 'line in {+FILE+}:lines()',
+	'io.lines'      : 'line in io.lines ( {+FILENAME+} )',
+	'string.gmatch' : ' in string.gmatch ( {+STRING+}, {+PATTERN+} )',
+	'range'         : 'idx = {+FIRST+}, {+LAST+}',
+	'range+step'    : 'idx = {+FIRST+}, {+LAST+}, {+STEP+}',
+== ENDLIST ==
+
+== Idioms.iterators == expandmenu, map:ii, sc:i ==
+|PickList( 'iterate over', 'idioms_iterators' )|
+for <CURSOR>|PICK| do
+	<SPLIT>{-LOOP_BODY-}
+end
+== ENDTEMPLATE ==
+
+§ -------------------------------------------------------------
+§  Files
+§ -------------------------------------------------------------
+
+== SEP: Idioms.sep_file ==
+
+== Idioms.open file == below, map:iof, sc:o ==
+local	|?FILE_HANDLE| = assert ( io.open ( <CURSOR>, '{+MODE+}' ) )
+
+assert ( io.close ( |FILE_HANDLE| ) )
+== Idioms.open pipe == below, map:iop, sc:o ==
+local	|?FILE_HANDLE| = assert ( io.popen ( <CURSOR>, '{+MODE+}' ) )
+
+assert ( io.close ( |FILE_HANDLE| ) )
+== ENDTEMPLATE ==
+
+§ -------------------------------------------------------------
+§  Path
+§ -------------------------------------------------------------
+
+== SEP: Idioms.sep_path ==
+
+== Idioms.add to path == below, map:ip, sc:p ==
+package.path = package.path .. ';<CURSOR>/?.lua'
+== ENDTEMPLATE ==
+
