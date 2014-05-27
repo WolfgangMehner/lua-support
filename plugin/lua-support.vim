@@ -41,7 +41,7 @@ endif
 if &cp || ( exists('g:Lua_Version') && ! exists('g:Lua_DevelopmentOverwrite') )
 	finish
 endif
-let g:Lua_Version= '0.8beta'     " version number of this script; do not change
+let g:Lua_Version= '0.8'     " version number of this script; do not change
 "
 "-------------------------------------------------------------------------------
 " Auxiliary functions.   {{{1
@@ -119,6 +119,55 @@ function! s:ImportantMsg ( ... )
 	echo join ( a:000, "\n" )
 	echohl None
 endfunction    " ----------  end of function s:ImportantMsg  ----------
+"
+"-------------------------------------------------------------------------------
+" s:UserInput : Input after a highlighted prompt.   {{{2
+"
+" Parameters:
+"   prompt - the prompt (string)
+"   text - the default input (string)
+"   compl - completion (string, optional)
+"   clist - list, if 'compl' is "customlist" (list, optional)
+" Returns:
+"   input - the user input, an empty sting if the user hit <ESC> (string)
+"-------------------------------------------------------------------------------
+"
+function! s:UserInput ( prompt, text, ... )
+	"
+	echohl Search																					" highlight prompt
+	call inputsave()																			" preserve typeahead
+	if a:0 == 0 || a:1 == ''
+		let retval = input( a:prompt, a:text )
+	elseif a:1 == 'customlist'
+		let s:UserInputList = a:2
+		let retval = input( a:prompt, a:text, 'customlist,Lua_UserInputEx' )
+		let s:UserInputList = []
+	else
+		let retval = input( a:prompt, a:text, a:1 )
+	endif
+	call inputrestore()																		" restore typeahead
+	echohl None																						" reset highlighting
+	"
+	let retval  = substitute( retval, '^\s\+', "", "" )		" remove leading whitespaces
+	let retval  = substitute( retval, '\s\+$', "", "" )		" remove trailing whitespaces
+	"
+	return retval
+	"
+endfunction    " ----------  end of function s:UserInput ----------
+"
+"----------------------------------------------------------------------
+"  Lua_UserInputEx : ex-command for s:UserInput.   {{{3
+"----------------------------------------------------------------------
+"
+function! Lua_UserInputEx ( ArgLead, CmdLine, CursorPos )
+	if empty( a:ArgLead )
+		return copy( s:UserInputList )
+	endif
+	return filter( copy( s:UserInputList ), 'v:val =~ ''\V\<'.escape(a:ArgLead,'\').'\w\*''' )
+endfunction    " ----------  end of function Lua_UserInputEx  ----------
+" }}}3
+"-------------------------------------------------------------------------------
+"
 " }}}2
 "-------------------------------------------------------------------------------
 "
@@ -198,9 +247,13 @@ let s:CmdLineEscChar = ' |"\'
 let s:Lua_LoadMenus             = 'auto'       " load the menus?
 let s:Lua_RootMenu              = '&Lua'       " name of the root menu
 "
+let s:Lua_OutputMethodList      = [ 'vim-io', 'vim-qf', 'buffer', 'xterm' ]
+let s:Lua_OutputMethod          = 'vim-io'     " 'vim-io', 'vim-qf', 'buffer' or 'xterm'
 let s:Lua_LineEndCommColDefault = 49
 let s:Lua_SnippetDir            = s:plugin_dir.'/lua-support/codesnippets/'
 let s:Lua_SnippetBrowser        = 'gui'
+"
+let s:Xterm_Executable          = 'xterm'
 "
 if ! exists ( 's:MenuVisible' )
 	let s:MenuVisible = 0                        " menus are not visible at the moment
@@ -230,15 +283,18 @@ call s:GetGlobalSetting ( 'Lua_GlbTemplateFile' )
 call s:GetGlobalSetting ( 'Lua_LclTemplateFile' )
 call s:GetGlobalSetting ( 'Lua_LoadMenus' )
 call s:GetGlobalSetting ( 'Lua_RootMenu' )
+call s:GetGlobalSetting ( 'Lua_OutputMethod' )
 call s:GetGlobalSetting ( 'Lua_Executable' )
 call s:GetGlobalSetting ( 'Lua_CompilerExec' )
 call s:GetGlobalSetting ( 'Lua_LineEndCommColDefault' )
 call s:GetGlobalSetting ( 'Lua_SnippetDir' )
 call s:GetGlobalSetting ( 'Lua_SnippetBrowser' )
+call s:GetGlobalSetting ( 'Xterm_Executable' )
 "
 call s:ApplyDefaultSetting ( 'Lua_CompiledExtension', 'luac' )         " default: 'luac'
 call s:ApplyDefaultSetting ( 'Lua_InsertFileHeader', 'yes' )           " default: do insert a file header
 call s:ApplyDefaultSetting ( 'Lua_MapLeader', '' )                     " default: do not overwrite 'maplocalleader'
+call s:ApplyDefaultSetting ( 'Xterm_Options', '-fa courier -fs 12 -geometry 80x24' )
 "
 let s:Lua_GlbTemplateFile = expand ( s:Lua_GlbTemplateFile )
 let s:Lua_LclTemplateFile = expand ( s:Lua_LclTemplateFile )
@@ -283,7 +339,7 @@ endfunction    " ----------  end of function Lua_EndOfLineComment  ----------
 function! Lua_AdjustEndOfLineComm () range
 	"
 	" comment character (for use in regular expression)
-	let cc = '%'
+	let cc = '--'
 	"
 	" patterns to ignore when adjusting line-end comments (maybe incomplete):
 	" - single-quoted strings, includes \n \' \\ ...
@@ -532,10 +588,10 @@ function! Lua_FunctionComment() range
 endfunction    " ----------  end of function Lua_FunctionComment  ----------
 "
 "-------------------------------------------------------------------------------
-" Lua_EscSpecChar : Automatically comment a function.   {{{1
+" Lua_EscMagicChar : Automatically escape magic characters.   {{{1
 "-------------------------------------------------------------------------------
 "
-function! Lua_EscSpecChar()
+function! Lua_EscMagicChar()
 	"
 	let col  = getpos('.')[2]
 	let char = getline('.')[col-1]
@@ -545,7 +601,7 @@ function! Lua_EscSpecChar()
 	endif
 	"
 	return ''
-endfunction    " ----------  end of function Lua_EscSpecChar  ----------
+endfunction    " ----------  end of function Lua_EscMagicChar  ----------
 "
 "-------------------------------------------------------------------------------
 " Lua_CodeSnippet : Code snippets.   {{{1
@@ -684,10 +740,119 @@ endfunction    " ----------  end of function Lua_CodeSnippet  ----------
 function! Lua_Run ( args )
 	"
 	silent exe 'update'   | " write source file if necessary
+	cclose
 	"
-	let output = system ( shellescape( s:Lua_Executable ).' '.shellescape( bufname('%') ).' '.a:args )
+	" :TODO:13.05.2014 14:58:WM: use the script as the executable (script is executable + shebang)
 	"
-	echo output
+	" prepare and check the executable
+	if ! executable( s:Lua_Executable )
+		return s:ErrorMsg (
+					\ 'Command "'.s:Lua_Executable.'" not found. Not configured correctly?',
+					\ 'Further information: :help g:Lua_Executable' )
+	endif
+	"
+	let script = shellescape ( expand ( '%' ) )
+	"
+	if s:Lua_OutputMethod == 'vim-io'
+		"
+		" method : "vim - interactive"
+		"
+		exe '!'.shellescape( s:Lua_Executable ).' '.script.' '.a:args
+		"
+	elseif s:Lua_OutputMethod == 'vim-qf'
+		"
+		" method : "vim - quickfix"
+		"
+		" run script
+		let lua_output = system ( shellescape( s:Lua_Executable ).' '.script.' '.a:args )
+		"
+		" successful?
+		if v:shell_error == 0
+			"
+			" echo script output
+			echo lua_output
+			"
+		else
+			"
+			" save current settings
+			let errorf_saved = &g:errorformat
+			"
+			" run code checker
+			" :TODO:26.03.2014 20:54:WM: check escaping of errorformat
+			let &g:errorformat = substitute( s:Lua_Executable, '%\\%\\', '%\', 'g' ).': %f:%l: %m,'.substitute( s:Lua_CompilerExec, '%\\%\\', '%\', 'g' ).': %m,%f:%l: %m'
+			"
+			silent exe 'cexpr lua_output'
+			"
+			" restore current settings
+			let &g:errorformat = errorf_saved
+			"
+			botright cwindow
+			cc
+			"
+		endif
+	elseif s:Lua_OutputMethod == 'buffer'
+		"
+		" method : "buffer"
+		"
+		if bufwinnr ( 'Lua Output$' ) == -1
+			" open buffer
+			above new
+			file Lua\ Output
+			"
+			" settings
+			setlocal buftype=nofile
+			setlocal noswapfile
+			setlocal syntax=none
+			setlocal tabstop=8
+		else
+			" jump to window
+			exe bufwinnr( '^Lua Output$' ).'wincmd w'
+		endif
+		"
+		setlocal modifiable
+		"
+		silent exe '%del'
+		exe '0r!'.shellescape( s:Lua_Executable ).' '.script.' '.a:args
+		silent exe '$del'
+		"
+		let errorf_saved  = &l:errorformat
+		"
+		if v:shell_error == 0
+			setlocal nomodifiable
+			setlocal nomodified
+		else
+			"
+			"split
+			"
+			" save current settings
+			let errorf_saved  = &l:errorformat
+			"
+			" run code checker
+			" :TODO:26.03.2014 20:54:WM: check escaping of errorformat
+			let &l:errorformat = substitute( s:Lua_Executable, '%\\%\\', '%\', 'g' ).': %f:%l: %m,'.substitute( s:Lua_CompilerExec, '%\\%\\', '%\', 'g' ).': %m,%f:%l: %m'
+			"
+			silent exe 'cgetbuffer'
+			"
+			" restore current settings
+			let &l:errorformat = errorf_saved
+			"
+			botright cwindow
+			cc
+			"
+		endif
+		"
+	elseif s:Lua_OutputMethod == 'xterm'
+		"
+		" method : "xterm"
+		"
+		let title = 'Lua'
+		let args = a:args
+		"
+		silent exe '!'.s:Xterm_Executable.' '.g:Xterm_Options
+					\ .' -title '.shellescape( title )
+					\ .' -e '.shellescape( s:Lua_Executable.' '.script.' '.args.' ; echo "" ; read -p "  ** PRESS ENTER **  " dummy ' ).' &'
+		"
+	endif
 	"
 endfunction    " ----------  end of function Lua_Run  ----------
 "
@@ -703,11 +868,10 @@ function! Lua_Compile( mode ) range
 	cclose
 	"
 	" prepare and check the executable
-	" :TODO:26.03.2014 20:54:WM: name of the help page
 	if ! executable( s:Lua_CompilerExec )
 		return s:ErrorMsg (
 					\ 'Command "'.s:Lua_CompilerExec.'" not found. Not configured correctly?',
-					\ 'Further information: :help luasupport-config-TODO' )
+					\ 'Further information: :help g:Lua_CompilerExec' )
 	endif
 	"
 	if a:mode == 'compile'
@@ -880,18 +1044,90 @@ function! Lua_HelpPlugin ()
 endfunction    " ----------  end of function Lua_HelpPlugin  ----------
 "
 "-------------------------------------------------------------------------------
+" Lua_SetExecutable : Set s:Lua_Executable or s:Lua_CompilerExec   {{{1
+"-------------------------------------------------------------------------------
+"
+function! Lua_SetExecutable ( exe_type, new_exec )
+	"
+	if a:exe_type == 'exe'
+		let var = 's:Lua_Executable'
+	elseif a:exe_type == 'compile'
+		let var = 's:Lua_CompilerExec'
+	else
+		return s:ErrorMsg ( 'Unknown type "'.a:exe_type.'".' )
+	endif
+	"
+	if a:new_exec == ''
+		echo {var}
+	elseif ! executable ( a:new_exec )
+		return s:ErrorMsg ( '"'.a:new_exec.'" is not executable, nothing set.' )
+	else
+		let {var} = a:new_exec
+	endif
+	"
+	return
+endfunction    " ----------  end of function Lua_SetExecutable  ----------
+"
+"-------------------------------------------------------------------------------
+" Lua_GetOutputMethodList : For cmd.-line completion.   {{{1
+"-------------------------------------------------------------------------------
+"
+function! Lua_GetOutputMethodList (...)
+	return join ( s:Lua_OutputMethodList, "\n" )
+endfunction    " ----------  end of function Lua_GetOutputMethodList  ----------
+"
+"-------------------------------------------------------------------------------
+" Lua_SetOutputMethod : Set s:Lua_OutputMethod   {{{1
+"-------------------------------------------------------------------------------
+"
+function! Lua_SetOutputMethod ( method )
+	"
+	if a:method == ''
+		echo s:Lua_OutputMethod
+		return
+	endif
+	"
+	" 'method' gives the output method
+	if index ( s:Lua_OutputMethodList, a:method ) == -1
+		return s:ErrorMsg ( 'Unknown method "'.a:method.'".' )
+	endif
+	"
+	let s:Lua_OutputMethod = a:method
+	"
+	" update the menu header
+	if ! has ( 'menu' ) || s:MenuVisible == 0
+		return
+	endif
+	"
+	exe 'aunmenu '.s:Lua_RootMenu.'.Run.output\ method.Output\ Method'
+	"
+	if s:Lua_OutputMethod == 'vim-io'
+		let current = 'vim\ io'
+	elseif s:Lua_OutputMethod == 'vim-qf'
+		let current = 'vim\ qf'
+	elseif s:Lua_OutputMethod == 'buffer'
+		let current = 'buffer'
+	elseif s:Lua_OutputMethod == 'xterm'
+		let current = 'xterm'
+	endif
+	"
+	exe 'anoremenu ...400 '.s:Lua_RootMenu.'.Run.output\ method.Output\ Method<TAB>(current\:\ '.current.') :echo "This is a menu header."<CR>'
+	"
+endfunction    " ----------  end of function Lua_SetOutputMethod  ----------
+"
+"-------------------------------------------------------------------------------
 " s:CreateMaps : Create additional maps.   {{{1
 "-------------------------------------------------------------------------------
 "
 function! s:CreateMaps ()
 	"
 	"-------------------------------------------------------------------------------
-	" user defined commands
+	" user defined commands (only working in Lua buffers)
 	"-------------------------------------------------------------------------------
 	"
-  command! -nargs=* -complete=file Lua          call Lua_Run(<q-args>)
-  command! -nargs=* -complete=file LuaCompile   call Lua_Compile('compile')
-  command! -nargs=* -complete=file LuaCheck     call Lua_Compile('check')
+	command! -nargs=* -buffer -complete=file Lua          call Lua_Run(<q-args>)
+	command! -nargs=0 -buffer -complete=file LuaCompile   call Lua_Compile('compile')
+	command! -nargs=0 -buffer -complete=file LuaCheck     call Lua_Compile('check')
 	"
 	"-------------------------------------------------------------------------------
 	" settings - local leader
@@ -926,8 +1162,8 @@ function! s:CreateMaps ()
 	"-------------------------------------------------------------------------------
 	" regex
 	"-------------------------------------------------------------------------------
-	nnoremap    <buffer>  <silent>  <LocalLeader>xe     i<C-R>=Lua_EscSpecChar()<CR><ESC><Right>
-	inoremap    <buffer>  <silent>  <LocalLeader>xe      <C-R>=Lua_EscSpecChar()<CR>
+	nnoremap    <buffer>  <silent>  <LocalLeader>xe     i<C-R>=Lua_EscMagicChar()<CR><ESC><Right>
+	inoremap    <buffer>  <silent>  <LocalLeader>xe      <C-R>=Lua_EscMagicChar()<CR>
 	"
 	"-------------------------------------------------------------------------------
 	" snippets
@@ -964,7 +1200,7 @@ function! s:CreateMaps ()
 	vnoremap    <buffer>  <silent> <LocalLeader>nts    <C-C>:call mmtemplates#core#ChooseStyle(g:Lua_Templates,"!pick")<CR>
 	"
 	"-------------------------------------------------------------------------------
-	" code checker
+	" run, compile, checker
 	"-------------------------------------------------------------------------------
 	nnoremap    <buffer>  <silent>  <LocalLeader>rr         :call Lua_Run('')<CR>
 	inoremap    <buffer>  <silent>  <LocalLeader>rr    <Esc>:call Lua_Run('')<CR>
@@ -975,6 +1211,19 @@ function! s:CreateMaps ()
 	nnoremap    <buffer>  <silent>  <LocalLeader>rk         :call Lua_Compile('check')<CR>
 	inoremap    <buffer>  <silent>  <LocalLeader>rk    <Esc>:call Lua_Compile('check')<CR>
 	vnoremap    <buffer>  <silent>  <LocalLeader>rk    <Esc>:call Lua_Compile('check')<CR>
+	"
+	"-------------------------------------------------------------------------------
+	" output method
+	"-------------------------------------------------------------------------------
+	nnoremap    <buffer>            <LocalLeader>ro         :LuaOutputMethod<SPACE>
+	inoremap    <buffer>            <LocalLeader>ro    <Esc>:LuaOutputMethod<SPACE>
+	vnoremap    <buffer>            <LocalLeader>ro    <Esc>:LuaOutputMethod<SPACE>
+	nnoremap    <buffer>            <LocalLeader>rse        :LuaExecutable<SPACE>
+	inoremap    <buffer>            <LocalLeader>rse   <Esc>:LuaExecutable<SPACE>
+	vnoremap    <buffer>            <LocalLeader>rse   <Esc>:LuaExecutable<SPACE>
+	nnoremap    <buffer>            <LocalLeader>rsc        :LuaCompilerExec<SPACE>
+	inoremap    <buffer>            <LocalLeader>rsc   <Esc>:LuaCompilerExec<SPACE>
+	vnoremap    <buffer>            <LocalLeader>rsc   <Esc>:LuaCompilerExec<SPACE>
 	"
 	"-------------------------------------------------------------------------------
 	" settings
@@ -1018,7 +1267,7 @@ function! s:InitMenus()
 		return
 	endif
 	"
-	" Preparation
+	" preparation
 	call mmtemplates#core#CreateMenus ( 'g:Lua_Templates', s:Lua_RootMenu, 'do_reset' )
 	"
 	" get the mapleader (correctly escaped)
@@ -1079,8 +1328,8 @@ function! s:InitMenus()
 	let ihead = 'inoremenu <silent> '.s:Lua_RootMenu.'.Regex.'
 	"
 	exe ahead.'-Sep01-                                  :'
-	exe nhead.'&esc\.\ spec\.\ char\.<Tab>'.esc_mapl.'xe  i<C-R>=Lua_EscSpecChar()<CR><ESC><Right>'
-	exe ihead.'&esc\.\ spec\.\ char\.<Tab>'.esc_mapl.'xe   <C-R>=Lua_EscSpecChar()<CR>'
+	exe nhead.'&esc\.\ magic\ char\.<Tab>'.esc_mapl.'xe  i<C-R>=Lua_EscMagicChar()<CR><ESC><Right>'
+	exe ihead.'&esc\.\ magic\ char\.<Tab>'.esc_mapl.'xe   <C-R>=Lua_EscMagicChar()<CR>'
 	"
 	"-------------------------------------------------------------------------------
 	" snippets
@@ -1110,15 +1359,34 @@ function! s:InitMenus()
 	" run
 	"-------------------------------------------------------------------------------
 	"
-	let ahead = 'anoremenu <silent> '.s:Lua_RootMenu.'.Run.'
+	let ahead = 'anoremenu          '.s:Lua_RootMenu.'.Run.'
+	let shead = 'anoremenu <silent> '.s:Lua_RootMenu.'.Run.'
 	let vhead = 'vnoremenu <silent> '.s:Lua_RootMenu.'.Run.'
 	"
-	exe ahead.'&run<TAB><F9>\ '.esc_mapl.'rr             :call Lua_Run()<CR>'
-	exe ahead.'&compile<TAB><S-F9>\ '.esc_mapl.'rc       :call Lua_Compile("compile")<CR>'
-	exe ahead.'chec&k\ code<TAB><A-F9>\ '.esc_mapl.'rk   :call Lua_Compile("check")<CR>'
-	exe ahead.'-Sep01-                                   :'
+	exe shead.'&run<TAB><F9>\ '.esc_mapl.'rr             :call Lua_Run()<CR>'
+	exe shead.'&compile<TAB><S-F9>\ '.esc_mapl.'rc       :call Lua_Compile("compile")<CR>'
+	exe shead.'chec&k\ code<TAB><A-F9>\ '.esc_mapl.'rk   :call Lua_Compile("check")<CR>'
+	exe shead.'-Sep01-                                   :'
 	"
-	exe ahead.'&settings<TAB>'.esc_mapl.'rs  :call Lua_Settings(0)<CR>'
+	" create a dummy menu header for the "output method" sub-menu
+	exe shead.'&output\ method<TAB>'.esc_mapl.'ro.Output\ Method   :'
+	exe shead.'&output\ method<TAB>'.esc_mapl.'ro.-SepHead-        :'
+	exe ahead.'&set\ executable<TAB>'.esc_mapl.'rse                :LuaExecutable<SPACE>'
+	exe ahead.'&set\ compiler\ exec\.<TAB>'.esc_mapl.'rsc          :LuaCompilerExec<SPACE>'
+	exe shead.'-Sep02-                                             :'
+	"
+	exe shead.'&settings<TAB>'.esc_mapl.'rs  :call Lua_Settings(0)<CR>'
+	"
+	" run -> output method
+	"
+	exe shead.'output\ method.vim\ &io<TAB>interactive   :call Lua_SetOutputMethod("vim-io")<CR>'
+	exe shead.'output\ method.vim\ &qf<TAB>quickfix      :call Lua_SetOutputMethod("vim-qf")<CR>'
+	exe shead.'output\ method.&buffer<TAB>quickfix       :call Lua_SetOutputMethod("buffer")<CR>'
+	exe shead.'output\ method.&xterm<TAB>interactive     :call Lua_SetOutputMethod("xterm")<CR>'
+	"
+	" deletes the dummy menu header and displays the current method
+	" in the menu header of the sub-menu
+	call Lua_SetOutputMethod ( s:Lua_OutputMethod )
 	"
 	"-------------------------------------------------------------------------------
 	" help
@@ -1161,6 +1429,8 @@ endfunction    " ----------  end of function s:ToolMenu  ----------
 "
 function! Lua_AddMenus()
 	if s:MenuVisible == 0
+		" the menu is becoming visible
+		let s:MenuVisible = 2
 		" make sure the templates are loaded
 		call s:SetupTemplates ()
 		" initialize if not existing
@@ -1239,6 +1509,12 @@ function! Lua_Settings( verbose )
 					\ .'       insert file header :  "'.g:Lua_InsertFileHeader."\"\n"
 					\ ."\n"
 					\ .'       compiled extension :  "'.g:Lua_CompiledExtension."\"\n"
+					\ .'            output method :  "'.s:Lua_OutputMethod."\"\n"
+	endif
+	if s:UNIX && a:verbose >= 1
+		let	txt .=
+					\  '         xterm executable :  "'.s:Xterm_Executable."\"\n"
+					\ .'            xterm options :  "'.g:Xterm_Options."\"\n"
 	endif
 	let txt .=
 				\  "________________________________________________________________________________\n"
@@ -1263,6 +1539,11 @@ call s:ToolMenu ( 'setup' )
 if s:Lua_LoadMenus == 'startup'
 	call Lua_AddMenus ()
 endif
+"
+" user defined commands (working everywhere)
+command! -nargs=? -complete=custom,Lua_GetOutputMethodList LuaOutputMethod   call Lua_SetOutputMethod(<q-args>)
+command! -nargs=? -complete=shellcmd                       LuaExecutable     call Lua_SetExecutable('exe',<q-args>)
+command! -nargs=? -complete=shellcmd                       LuaCompilerExec   call Lua_SetExecutable('compile',<q-args>)
 "
 if has( 'autocmd' )
 	autocmd FileType *

@@ -74,9 +74,6 @@
 	'io.output'
 	'io.popen'
 	'io.read'
-	'io.stderr'
-	'io.stdin'
-	'io.stdout'
 	'io.tmpfile'
 	'io.type'
 	'io.write'
@@ -93,13 +90,11 @@
 	'math.floor'
 	'math.fmod'
 	'math.frexp'
-	'math.huge'
 	'math.ldexp'
 	'math.log'
 	'math.max'
 	'math.min'
 	'math.modf'
-	'math.pi'
 	'math.pow'
 	'math.rad'
 	'math.random'
@@ -120,13 +115,7 @@
 	'os.setlocale'
 	'os.time'
 	'os.tmpname'
-	'package.config'
-	'package.cpath'
-	'package.loaded'
 	'package.loadlib'
-	'package.path'
-	'package.preload'
-	'package.searchers'
 	'package.searchpath'
 	'string.byte'
 	'string.char'
@@ -153,12 +142,19 @@
 --  Fields
 --------------------------------------------------------------------------------
 
-	package.config
-	package.cpath
-	package.loaded
-	package.path
-	package.preload
-	package.searchers
+	'_G'
+	'_VERSION'
+	'io.stderr'
+	'io.stdin'
+	'io.stdout'
+	'math.huge'
+	'math.pi'
+	'package.config'
+	'package.cpath'
+	'package.loaded'
+	'package.path'
+	'package.preload'
+	'package.searchers'
 
 --------------------------------------------------------------------------------
 --  Metamethods
