@@ -9,7 +9,7 @@ The development happens here:
 
 --------------------------------------------------------------------------------
 
-README for lua-support.vim (Version 0.8) / May 25 2014
+README for lua-support.vim (Version 0.9pre) / Sep 23 2014
 ================================================================================
 
   *  INSTALLATION
@@ -171,9 +171,15 @@ Any problems? See the TROUBLESHOOTING section at the end of the help file
   RELEASE NOTES
 ================================================================================
 
-  RELEASE NOTES FOR VERSION 0.8
+  RELEASE NOTES FOR VERSION 0.9pre
 ----------------------------------------------------------------------
-- Initial release.
+- Added: Hardcopy to postscript.
+- Added: Direct run, run executable scripts directly, using their shebang.
+- Added: Make script executable/not exec.
+- Changed: Better error recognition while running scripts.
+- Fixed: Setup of local templates in case of global installation.
+- New templates and codesnippets.
+- Minor improvements.
 
   RELEASE NOTES FOR OLDER VERSIONS
 ----------------------------------------------------------------------
