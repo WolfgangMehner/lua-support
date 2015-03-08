@@ -11,8 +11,8 @@
 "  Organization:  
 "       Version:  see variable g:Lua_Version below
 "       Created:  26.03.2014
-"      Revision:  04.10.2014
-"       License:  Copyright (c) 2012-2014, Wolfgang Mehner
+"      Revision:  30.12.2014
+"       License:  Copyright (c) 2014-2015, Wolfgang Mehner
 "                 This program is free software; you can redistribute it and/or
 "                 modify it under the terms of the GNU General Public License as
 "                 published by the Free Software Foundation, version 2 of the
@@ -41,7 +41,7 @@ endif
 if &cp || ( exists('g:Lua_Version') && ! exists('g:Lua_DevelopmentOverwrite') )
 	finish
 endif
-let g:Lua_Version= '0.9'     " version number of this script; do not change
+let g:Lua_Version= '1.0pre'     " version number of this script; do not change
 "
 "-------------------------------------------------------------------------------
 " Auxiliary functions.   {{{1
@@ -90,16 +90,22 @@ endfunction    " ----------  end of function s:ErrorMsg  ----------
 "
 " Parameters:
 "   varname - name of the variable (string)
+"   glbname - name of the global variable (string, optional)
 " Returns:
 "   -
 "
-" If g:<varname> exists, assign:
-"   s:<varname> = g:<varname>
+" If 'glbname' is given, it is used as the name of the global variable.
+" Otherwise the global variable will also be named 'varname'.
+"
+" If g:<glbname> exists, assign:
+"   s:<varname> = g:<glbname>
 "-------------------------------------------------------------------------------
 "
-function! s:GetGlobalSetting ( varname )
-	if exists ( 'g:'.a:varname )
-		exe 'let s:'.a:varname.' = g:'.a:varname
+function! s:GetGlobalSetting ( varname, ... )
+	let lname = a:varname
+	let gname = a:0 >= 1 ? a:1 : lname
+	if exists ( 'g:'.gname )
+		let { 's:'.lname } = { 'g:'.gname }
 	endif
 endfunction    " ----------  end of function s:GetGlobalSetting  ----------
 "
@@ -155,9 +161,9 @@ function! s:UserInput ( prompt, text, ... )
 	"
 endfunction    " ----------  end of function s:UserInput ----------
 "
-"----------------------------------------------------------------------
-"  Lua_UserInputEx : ex-command for s:UserInput.   {{{3
-"----------------------------------------------------------------------
+"-------------------------------------------------------------------------------
+" Lua_UserInputEx : ex-command for s:UserInput.   {{{3
+"-------------------------------------------------------------------------------
 "
 function! Lua_UserInputEx ( ArgLead, CmdLine, CursorPos )
 	if empty( a:ArgLead )
@@ -182,10 +188,11 @@ endfunction    " ----------  end of function Lua_UserInputEx  ----------
 let s:MSWIN = has("win16") || has("win32")   || has("win64")    || has("win95")
 let s:UNIX	= has("unix")  || has("macunix") || has("win32unix")
 "
-let s:installation        = '*undefined*'      " 'local' or 'system'
-let s:plugin_dir          = ''                 " the directory hosting ftplugin/ plugin/ lua-support/ ...
-let s:Lua_GlbTemplateFile = ''                 " the global templates, undefined for s:installation == 'local'
-let s:Lua_LclTemplateFile = ''                 " the local templates
+let s:installation           = '*undefined*'    " 'local' or 'system'
+let s:plugin_dir             = ''               " the directory hosting ftplugin/ plugin/ lua-support/ ...
+let s:Lua_GlobalTemplateFile = ''               " the global templates, undefined for s:installation == 'local'
+let s:Lua_LocalTemplateFile  = ''               " the local templates
+let s:Lua_CustomTemplateFile = ''               " the custom templates
 "
 let s:Lua_ToolboxDir      = []
 "
@@ -201,16 +208,18 @@ if s:MSWIN
 				\   '\V'.substitute( expand('$HOME'),   '\\', '/', 'g' ) ) == 0
 		"
 		" user installation assumed
-		let s:installation        = 'local'
-		let s:Lua_LclTemplateFile = s:plugin_dir.'/lua-support/templates/Templates'
-		let s:Lua_ToolboxDir     += [ s:plugin_dir.'/autoload/mmtoolbox/' ]
+		let s:installation           = 'local'
+		let s:Lua_LocalTemplateFile  = s:plugin_dir.'/lua-support/templates/Templates'
+		let s:Lua_CustomTemplateFile = $HOME.'/vimfiles/templates/lua.templates'
+		let s:Lua_ToolboxDir        += [ s:plugin_dir.'/autoload/mmtoolbox/' ]
 	else
 		"
 		" system wide installation
-		let s:installation        = 'system'
-		let s:Lua_GlbTemplateFile = s:plugin_dir.'/lua-support/templates/Templates'
-		let s:Lua_LclTemplateFile = $HOME.'/vimfiles/lua-support/templates/Templates'
-		let s:Lua_ToolboxDir     += [
+		let s:installation           = 'system'
+		let s:Lua_GlobalTemplateFile = s:plugin_dir.'/lua-support/templates/Templates'
+		let s:Lua_LocalTemplateFile  = $HOME.'/vimfiles/lua-support/templates/Templates'
+		let s:Lua_CustomTemplateFile = $HOME.'/vimfiles/templates/lua.templates'
+		let s:Lua_ToolboxDir        += [
 					\	s:plugin_dir.'/autoload/mmtoolbox/',
 					\	$HOME.'/vimfiles/autoload/mmtoolbox/' ]
 	endif
@@ -226,16 +235,18 @@ else
 	if match( expand('<sfile>'), '\V'.resolve(expand('$HOME')) ) == 0
 		"
 		" user installation assumed
-		let s:installation        = 'local'
-		let s:Lua_LclTemplateFile = s:plugin_dir.'/lua-support/templates/Templates'
-		let s:Lua_ToolboxDir     += [ s:plugin_dir.'/autoload/mmtoolbox/' ]
+		let s:installation           = 'local'
+		let s:Lua_LocalTemplateFile  = s:plugin_dir.'/lua-support/templates/Templates'
+		let s:Lua_CustomTemplateFile = $HOME.'/.vim/templates/lua.templates'
+		let s:Lua_ToolboxDir        += [ s:plugin_dir.'/autoload/mmtoolbox/' ]
 	else
 		"
 		" system wide installation
-		let s:installation        = 'system'
-		let s:Lua_GlbTemplateFile = s:plugin_dir.'/lua-support/templates/Templates'
-		let s:Lua_LclTemplateFile = $HOME.'/.vim/lua-support/templates/Templates'
-		let s:Lua_ToolboxDir     += [
+		let s:installation           = 'system'
+		let s:Lua_GlobalTemplateFile = s:plugin_dir.'/lua-support/templates/Templates'
+		let s:Lua_LocalTemplateFile  = $HOME.'/.vim/lua-support/templates/Templates'
+		let s:Lua_CustomTemplateFile = $HOME.'/.vim/templates/lua.templates'
+		let s:Lua_ToolboxDir        += [
 					\	s:plugin_dir.'/autoload/mmtoolbox/',
 					\	$HOME.'/.vim/autoload/mmtoolbox/' ]
 	endif
@@ -259,6 +270,7 @@ let s:Lua_CommentLabel          = "BlockCommentNo_"
 let s:Lua_SnippetDir            = s:plugin_dir.'/lua-support/codesnippets/'
 let s:Lua_SnippetBrowser        = 'gui'
 let s:Lua_UseToolbox            = 'yes'
+let s:Lua_AdditionalTemplates   = []
 "
 let s:Xterm_Executable          = 'xterm'
 "
@@ -286,8 +298,12 @@ else
 	let s:Lua_CompilerExec = s:Lua_BinPath.'luac'      " luac executable
 endif
 "
-call s:GetGlobalSetting ( 'Lua_GlbTemplateFile' )
-call s:GetGlobalSetting ( 'Lua_LclTemplateFile' )
+call s:GetGlobalSetting ( 'Lua_GlobalTemplateFile', 'Lua_GlbTemplateFile' )
+call s:GetGlobalSetting ( 'Lua_LocalTemplateFile',  'Lua_LclTemplateFile' )
+call s:GetGlobalSetting ( 'Lua_GlobalTemplateFile' )
+call s:GetGlobalSetting ( 'Lua_LocalTemplateFile' )
+call s:GetGlobalSetting ( 'Lua_CustomTemplateFile' )
+call s:GetGlobalSetting ( 'Lua_AdditionalTemplates' )
 call s:GetGlobalSetting ( 'Lua_LoadMenus' )
 call s:GetGlobalSetting ( 'Lua_RootMenu' )
 call s:GetGlobalSetting ( 'Lua_OutputMethod' )
@@ -307,9 +323,10 @@ call s:ApplyDefaultSetting ( 'Lua_Printheader', "%<%f%h%m%<  %=%{strftime('%x %H
 call s:ApplyDefaultSetting ( 'Lua_UseTool_make', 'yes' )
 call s:ApplyDefaultSetting ( 'Xterm_Options', '-fa courier -fs 12 -geometry 80x24' )
 "
-let s:Lua_GlbTemplateFile = expand ( s:Lua_GlbTemplateFile )
-let s:Lua_LclTemplateFile = expand ( s:Lua_LclTemplateFile )
-let s:Lua_SnippetDir      = expand ( s:Lua_SnippetDir )
+let s:Lua_GlobalTemplateFile = expand ( s:Lua_GlobalTemplateFile )
+let s:Lua_LocalTemplateFile  = expand ( s:Lua_LocalTemplateFile )
+let s:Lua_CustomTemplateFile = expand ( s:Lua_CustomTemplateFile )
+let s:Lua_SnippetDir         = expand ( s:Lua_SnippetDir )
 "
 " }}}2
 "-------------------------------------------------------------------------------
@@ -968,14 +985,19 @@ function! Lua_Run ( args )
 		"
 		setlocal modifiable
 		"
-		silent exe '%del'
+		silent exe '%delete _'
 		exe '0r!'.exec.' '.script.' '.a:args
-		silent exe '$del'
+		silent exe '$delete _'
 		"
 		if v:shell_error == 0
+			" jump to the first line of the output
+			normal! gg
+			"
 			setlocal nomodifiable
 			setlocal nomodified
 		else
+			" jump to the last line of the output, where the error is mentioned
+			normal! G
 			"
 			" save current settings
 			let errorf_saved  = &l:errorformat
@@ -1058,10 +1080,10 @@ function! Lua_Compile( mode ) range
 	" any errors?
 	if a:mode == 'compile' && empty ( v:statusmsg )
 		redraw                                      " redraw after cclose, before echoing
-		call s:ImportantMsg ( 'Compiled successfully.' )
+		call s:ImportantMsg ( bufname('%').': Compiled successfully.' )
 	elseif a:mode == 'check' && empty ( v:statusmsg )
 		redraw                                      " redraw after cclose, before echoing
-		call s:ImportantMsg ( 'No warnings.' )
+		call s:ImportantMsg ( bufname('%').': No warnings.' )
 	else
 		botright cwindow
 		cc
@@ -1207,8 +1229,19 @@ function! s:SetupTemplates()
 		call mmtemplates#core#Resource ( g:Lua_Templates, 'set', 'property', 'Templates::Mapleader', g:Lua_MapLeader )
 	endif
 	"
-	" map: choose style
-	call mmtemplates#core#Resource ( g:Lua_Templates, 'set', 'property', 'Templates::ChooseStyle::Map', 'nts' )
+	" some metainfo
+	call mmtemplates#core#Resource ( g:Lua_Templates, 'set', 'property', 'Templates::Wizard::PluginName',   'Lua' )
+	call mmtemplates#core#Resource ( g:Lua_Templates, 'set', 'property', 'Templates::Wizard::FiletypeName', 'Lua' )
+	call mmtemplates#core#Resource ( g:Lua_Templates, 'set', 'property', 'Templates::Wizard::FileCustomNoPersonal',   s:plugin_dir.'/lua-support/rc/custom.templates' )
+	call mmtemplates#core#Resource ( g:Lua_Templates, 'set', 'property', 'Templates::Wizard::FileCustomWithPersonal', s:plugin_dir.'/lua-support/rc/custom_with_personal.templates' )
+	call mmtemplates#core#Resource ( g:Lua_Templates, 'set', 'property', 'Templates::Wizard::FilePersonal',           s:plugin_dir.'/lua-support/rc/personal.templates' )
+	call mmtemplates#core#Resource ( g:Lua_Templates, 'set', 'property', 'Templates::Wizard::CustomFileVariable',     'g:Lua_CustomTemplateFile' )
+	call mmtemplates#core#Resource ( g:Lua_Templates, 'set', 'property', 'Templates::Wizard::AddFileListVariable',    'g:Lua_AdditionalTemplates' )
+	"
+	" maps: special operations
+	call mmtemplates#core#Resource ( g:Lua_Templates, 'set', 'property', 'Templates::RereadTemplates::Map', 'ntr' )
+	call mmtemplates#core#Resource ( g:Lua_Templates, 'set', 'property', 'Templates::ChooseStyle::Map',     'nts' )
+	call mmtemplates#core#Resource ( g:Lua_Templates, 'set', 'property', 'Templates::SetupWizard::Map',     'ntw' )
 	"
 	" syntax: comments
 	call mmtemplates#core#ChangeSyntax ( g:Lua_Templates, 'comment', '§' )
@@ -1216,55 +1249,63 @@ function! s:SetupTemplates()
 	"-------------------------------------------------------------------------------
 	" load template library
 	"-------------------------------------------------------------------------------
+	"
+	" global templates (global installation only)
 	if s:installation == 'system'
-		"-------------------------------------------------------------------------------
-		" system installation
-		"-------------------------------------------------------------------------------
-		"
-		" global templates
-		if filereadable( s:Lua_GlbTemplateFile )
-			call mmtemplates#core#ReadTemplates ( g:Lua_Templates, 'load', s:Lua_GlbTemplateFile )
-		else
-			return s:ErrorMsg ( 'Global template file "'.s:Lua_GlbTemplateFile.'" not readable.' )
-		endif
-		"
-		let local_dir = fnamemodify ( s:Lua_LclTemplateFile, ':p:h' )
-		"
-		if ! isdirectory( local_dir ) && exists('*mkdir')
-			try
-				call mkdir ( local_dir, 'p' )
-			catch /.*/
-			endtry
-		endif
-		"
-		if isdirectory( local_dir ) && ! filereadable( s:Lua_LclTemplateFile )
-			let sample_template_file = s:plugin_dir.'/lua-support/rc/sample_template_file'
-			if filereadable( sample_template_file )
-				call writefile ( readfile ( sample_template_file ), s:Lua_LclTemplateFile )
-			endif
-		endif
-		"
-		" local templates
-		if filereadable( s:Lua_LclTemplateFile )
-			call mmtemplates#core#ReadTemplates ( g:Lua_Templates, 'load', s:Lua_LclTemplateFile )
-			if mmtemplates#core#ExpandText ( g:Lua_Templates, '|AUTHOR|' ) == 'YOUR NAME'
-				call s:ErrorMsg ( 'Please set your personal details in the file "'.s:Lua_LclTemplateFile.'".' )
-			endif
-		endif
-		"
-	elseif s:installation == 'local'
-		"-------------------------------------------------------------------------------
-		" local installation
-		"-------------------------------------------------------------------------------
-		"
-		" local templates
-		if filereadable ( s:Lua_LclTemplateFile )
-			call mmtemplates#core#ReadTemplates ( g:Lua_Templates, 'load', s:Lua_LclTemplateFile )
-		else
-			return s:ErrorMsg ( 'Local template file "'.s:Lua_LclTemplateFile.'" not readable.' )
-		endif
+		call mmtemplates#core#ReadTemplates ( g:Lua_Templates, 'load', s:Lua_GlobalTemplateFile,
+					\ 'name', 'global', 'map', 'ntg' )
 	endif
+	"
+	" local templates (optional for global installation)
+	if s:installation == 'global'
+		call mmtemplates#core#ReadTemplates ( g:Lua_Templates, 'load', s:Lua_LocalTemplateFile,
+					\ 'name', 'local', 'map', 'ntl', 'optional', 'hidden' )
+	else
+		call mmtemplates#core#ReadTemplates ( g:Lua_Templates, 'load', s:Lua_LocalTemplateFile,
+					\ 'name', 'local', 'map', 'ntl' )
+	endif
+	"
+	" custom templates (optional, existence of file checked by template engine)
+	call mmtemplates#core#ReadTemplates ( g:Lua_Templates, 'load', s:Lua_CustomTemplateFile,
+				\ 'name', 'custom', 'map', 'ntc', 'optional' )
+	"
+	" additional templates (optional)
+	if ! empty ( s:Lua_AdditionalTemplates )
+		call mmtemplates#core#AddCustomTemplateFiles ( g:Lua_Templates, s:Lua_AdditionalTemplates, 'g:Lua_AdditionalTemplates' )
+	endif
+	"
+	" personal templates (shared across template libraries) (optional, existence of file checked by template engine)
+	call mmtemplates#core#ReadTemplates ( g:Lua_Templates, 'personalization',
+				\ 'name', 'personal', 'map', 'ntp' )
+	"
 endfunction    " ----------  end of function s:SetupTemplates  ----------
+"
+"-------------------------------------------------------------------------------
+" s:CheckTemplatePersonalization : Check whether the name, .. has been set.   {{{1
+"-------------------------------------------------------------------------------
+"
+let s:DoneCheckTemplatePersonalization = 0
+"
+function! s:CheckTemplatePersonalization ()
+	"
+	" check whether the templates are personalized
+	if ! s:DoneCheckTemplatePersonalization
+				\ && mmtemplates#core#ExpandText ( g:Lua_Templates, '|AUTHOR|' ) == 'YOUR NAME'
+		let s:DoneCheckTemplatePersonalization = 1
+		"
+		let maplead = mmtemplates#core#Resource ( g:Lua_Templates, 'get', 'property', 'Templates::Mapleader' )[0]
+		"
+		redraw
+		call s:ImportantMsg (
+					\ 'The personal details (name, mail, ...) are not set in the template library.',
+					\ 'They are used to generate comments, ...',
+					\ 'To set them, start the setup wizard using:',
+					\ '- use the menu entry "Lua -> Snippets -> template setup wizard"',
+					\ '- use the map "'.maplead.'ntw" inside a Lua buffer',
+					\ '' )
+	endif
+	"
+endfunction    " ----------  end of function s:CheckTemplatePersonalization  ----------
 "
 "-------------------------------------------------------------------------------
 " s:InsertFileHeader : Insert a header for a new file.   {{{1
@@ -1482,24 +1523,6 @@ function! s:CreateMaps ()
 	vnoremap    <buffer>  <silent> <LocalLeader>ne    <C-C>:call Lua_CodeSnippet('edit')<CR>
 	"
 	"-------------------------------------------------------------------------------
-	" templates - specials
-	"-------------------------------------------------------------------------------
-	nnoremap    <buffer>  <silent> <LocalLeader>ntl         :call mmtemplates#core#EditTemplateFiles(g:Lua_Templates,-1)<CR>
-	inoremap    <buffer>  <silent> <LocalLeader>ntl    <C-C>:call mmtemplates#core#EditTemplateFiles(g:Lua_Templates,-1)<CR>
-	vnoremap    <buffer>  <silent> <LocalLeader>ntl    <C-C>:call mmtemplates#core#EditTemplateFiles(g:Lua_Templates,-1)<CR>
-	if s:installation == 'system'
-		nnoremap  <buffer>  <silent> <LocalLeader>ntg         :call mmtemplates#core#EditTemplateFiles(g:Lua_Templates,0)<CR>
-		inoremap  <buffer>  <silent> <LocalLeader>ntg    <C-C>:call mmtemplates#core#EditTemplateFiles(g:Lua_Templates,0)<CR>
-		vnoremap  <buffer>  <silent> <LocalLeader>ntg    <C-C>:call mmtemplates#core#EditTemplateFiles(g:Lua_Templates,0)<CR>
-	endif
-	nnoremap    <buffer>  <silent> <LocalLeader>ntr         :call mmtemplates#core#ReadTemplates(g:Lua_Templates,"reload","all")<CR>
-	inoremap    <buffer>  <silent> <LocalLeader>ntr    <C-C>:call mmtemplates#core#ReadTemplates(g:Lua_Templates,"reload","all")<CR>
-	vnoremap    <buffer>  <silent> <LocalLeader>ntr    <C-C>:call mmtemplates#core#ReadTemplates(g:Lua_Templates,"reload","all")<CR>
-	nnoremap    <buffer>  <silent> <LocalLeader>nts         :call mmtemplates#core#ChooseStyle(g:Lua_Templates,"!pick")<CR>
-	inoremap    <buffer>  <silent> <LocalLeader>nts    <C-C>:call mmtemplates#core#ChooseStyle(g:Lua_Templates,"!pick")<CR>
-	vnoremap    <buffer>  <silent> <LocalLeader>nts    <C-C>:call mmtemplates#core#ChooseStyle(g:Lua_Templates,"!pick")<CR>
-	"
-	"-------------------------------------------------------------------------------
 	" run, compile, checker
 	"-------------------------------------------------------------------------------
 	nnoremap    <buffer>  <silent>  <LocalLeader>rr         :call Lua_Run('')<CR>
@@ -1573,7 +1596,7 @@ function! s:CreateMaps ()
 	"-------------------------------------------------------------------------------
 	" templates
 	"-------------------------------------------------------------------------------
-	call mmtemplates#core#CreateMaps ( 'g:Lua_Templates', g:Lua_MapLeader, 'do_jump_map' )
+	call mmtemplates#core#CreateMaps ( 'g:Lua_Templates', g:Lua_MapLeader, 'do_special_maps', 'do_jump_map', 'do_del_opt_map' )
 	"
 endfunction    " ----------  end of function s:CreateMaps  ----------
 "
@@ -1672,14 +1695,8 @@ function! s:InitMenus()
 	exe ahead.'&edit\ code\ snippet<Tab>'.esc_mapl.'ne         :call Lua_CodeSnippet("edit")<CR>'
 	exe ahead.'-Sep01-                                         :'
 	"
-	exe ahead.'edit\ &local\ templates<Tab>'.esc_mapl.'ntl      :call mmtemplates#core#EditTemplateFiles(g:Lua_Templates,-1)<CR>'
-	if s:installation == 'system'
-		exe ahead.'edit\ &global\ templates<Tab>'.esc_mapl.'ntg   :call mmtemplates#core#EditTemplateFiles(g:Lua_Templates,0)<CR>'
-	endif
-	exe ahead.'reread\ &templates<Tab>'.esc_mapl.'ntr           :call mmtemplates#core#ReadTemplates(g:Lua_Templates,"reload","all")<CR>'
-	"
-	" styles
-	call mmtemplates#core#CreateMenus ( 'g:Lua_Templates', s:Lua_RootMenu, 'do_styles',
+	" templates: edit and reload templates, styles
+	call mmtemplates#core#CreateMenus ( 'g:Lua_Templates', s:Lua_RootMenu, 'do_specials',
 				\ 'specials_menu', 'Snippets'	)
 	"
 	"-------------------------------------------------------------------------------
@@ -1820,11 +1837,9 @@ endfunction    " ----------  end of function Lua_RemoveMenus  ----------
 function! Lua_Settings( verbose )
 	"
 	if     s:MSWIN | let sys_name = 'Windows'
-	elseif s:UNIX  | let sys_name = 'UNIX'
+	elseif s:UNIX  | let sys_name = 'UN*X'
 	else           | let sys_name = 'unknown' | endif
 	"
-	let glb_t_status = filereadable ( s:Lua_GlbTemplateFile ) ? '' : ' (not readable)'
-	let lcl_t_status = filereadable ( s:Lua_LclTemplateFile ) ? '' : ' (not readable)'
 	let lua_exe_status = executable( s:Lua_Executable ) ? '' : ' (not executable)'
 	let luac_exe_status = executable( s:Lua_CompilerExec ) ? '' : ' (not executable)'
 	"
@@ -1844,13 +1859,12 @@ function! Lua_Settings( verbose )
 					\ ."\n"
 	else
 		let txt .=
-					\  "                templates : -not loaded- \n"
+					\  "                templates :  -not loaded- \n"
 					\ ."\n"
 	endif
 	" plug-in installation, template engine
 	let txt .=
 				\  '      plugin installation :  '.s:installation.' on '.sys_name."\n"
-				\ .'    using template engine :  version '.g:Templates_Version." by Wolfgang Mehner\n"
 	" toolbox
 	if s:Lua_UseToolbox == 'yes'
 		let toollist = mmtoolbox#tools#GetList ( s:Lua_Toolbox )
@@ -1863,23 +1877,31 @@ function! Lua_Settings( verbose )
 		endif
 	endif
 	let txt .= "\n"
-	" templates, snippets, executables
-	if s:installation == 'system'
-		let txt .= '     global template file :  '.s:Lua_GlbTemplateFile.glb_t_status."\n"
+	" templates, snippets
+	let [ templist, msg ] = mmtemplates#core#Resource ( g:Lua_Templates, 'template_list' )
+	if empty ( templist )
+		let txt .= "           template files :  -no template files-\n"
+	else
+		let sep  = "\n"."                             "
+		let txt .=      "           template files :  "
+					\ .join ( templist, sep )."\n"
 	endif
 	let txt .=
-				\  '      local template file :  '.s:Lua_LclTemplateFile.lcl_t_status."\n"
-				\ .'       code snippets dir. :  '.s:Lua_SnippetDir."\n"
-				\ .'        lua (interpreter) :  '.s:Lua_Executable.lua_exe_status."\n"
-				\ .'          luac (compiler) :  '.s:Lua_CompilerExec.luac_exe_status."\n"
-	" various settings, maps, menus, running, compiling, ...
+				\  '       code snippets dir. :  '.s:Lua_SnippetDir."\n"
 	if a:verbose >= 1
 		let	txt .= "\n"
 					\ .'                mapleader :  "'.g:Lua_MapLeader."\"\n"
 					\ .'               load menus :  "'.s:Lua_LoadMenus."\"\n"
 					\ .'       insert file header :  "'.g:Lua_InsertFileHeader."\"\n"
-					\ ."\n"
-					\ .'       compiled extension :  "'.g:Lua_CompiledExtension."\"\n"
+	endif
+	let txt .= "\n"
+	let txt .=
+				\  '        lua (interpreter) :  '.s:Lua_Executable.lua_exe_status."\n"
+				\ .'          luac (compiler) :  '.s:Lua_CompilerExec.luac_exe_status."\n"
+	" various settings, maps, menus, running, compiling, ...
+	if a:verbose >= 1
+		let	txt .=
+					\  '       compiled extension :  "'.g:Lua_CompiledExtension."\"\n"
 					\ .'            output method :  "'.s:Lua_OutputMethod."\"\n"
 					\ .'               direct run :  "'.s:Lua_DirectRun."\"\n"
 	endif
@@ -1943,6 +1965,7 @@ if has( 'autocmd' )
 	autocmd FileType *
 				\	if &filetype == 'lua' |
 				\		call s:CreateMaps() |
+				\		call s:CheckTemplatePersonalization() |
 				\	endif
 	autocmd BufNewFile  *.lua  call s:InsertFileHeader()
 endif

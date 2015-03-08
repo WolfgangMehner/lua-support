@@ -25,10 +25,21 @@ MILESTONES for Release 1.0
 --------------------------------------------------------------------------------
 
 * Template library:
-  - Include Lua 5.3. _normal_
-  - Include C interface. _normal_
+  - Include Lua 5.3. _in progress_
+  - Include C interface. _low_
+* Use the new customization options the template engine supports. ___done___
+* Include setting environment variables when running Lua. _normal_
+* Include the Lua reference manuals in Vim's help format. _in progress_
 * Include "scratch mode". _normal_
 * Run in background once piethreading is available. _low_
+
+
+--------------------------------------------------------------------------------
+MILESTONES for Release 1.1
+--------------------------------------------------------------------------------
+
+* Template library:
+  - Include C interface. _normal_
 
 
 --------------------------------------------------------------------------------
