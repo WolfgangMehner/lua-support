@@ -196,7 +196,7 @@ Any problems? See the TROUBLESHOOTING section at the end of the help file
 - Added template personalization file and setup wizard.
 - Added Lua's reference manual in Vim's help format.
 - Added maps and menu entries to jump to it conveniently.
-- New templates.
+- New and improved templates.
 - Minor improvements.
 
   RELEASE NOTES FOR OLDER VERSIONS
@@ -234,7 +234,8 @@ Any problems? See the TROUBLESHOOTING section at the end of the help file
                         Several dependent template files.
 
 ___The following files and extensions are for convenience only.___
-___lua-support.vim will work without them:___
+___lua-support.vim will work without them.___
+___The settings are explained in the files themselves.___
 
     ftplugin/lua.vim
                         Example filetype plug-in for Lua:
@@ -263,8 +264,6 @@ ___lua-support.vim will work without them:___
                         Suggestion for the configuration file .vimrc:
                           hot keys, tabstop, use of dictionaries,
                           the setup of the plug-in, ...
-
-___The settings are explained in the files themselves.___
 
     lua-support/rc/*.templates
                         Sample template files for customization. Used by the
@@ -315,6 +314,12 @@ ___The settings are explained in the files themselves.___
     inspiration and model for this plug-in and the utilized template support
   - parts of the documentation and other material (including the 'ADDITIONAL TIPS'
     above) are taken from his plug-ins as well
+
+* Luis Carvalho (Kozure):
+  - the idea for suppling Lua's reference manual in Vim's help format is taken
+    from his plug-in "luarefvim", which contains previous versions of the
+    reference manual
+    ( http://vim.sourceforge.net/scripts/script.php?script_id=1291 )
 
 
 For a complete list of people who made contributions to this plug-in,
