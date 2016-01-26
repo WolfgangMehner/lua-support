@@ -1,4 +1,4 @@
-MILESTONES for Lua-Support / October 04 2014
+MILESTONES for Lua-Support / January 07 2016
 ================================================================================
 
 * Milestone. _priority_
@@ -25,21 +25,19 @@ MILESTONES for Release 1.0
 --------------------------------------------------------------------------------
 
 * Template library:
-  - Include Lua 5.3. _in progress_
-  - Include C interface. _low_
+  - Include Lua 5.3. ___done___
+  - Include C interface. ___done___
 * Use the new customization options the template engine supports. ___done___
-* Include setting environment variables when running Lua. _normal_
-* Include the Lua reference manuals in Vim's help format. _in progress_
-* Include "scratch mode". _normal_
-* Run in background once piethreading is available. _low_
+* Include setting environment variables when running Lua. (Document how Vim allows to do this.) _normal_
+* Include the Lua reference manuals in Vim's help format. ___done___
 
 
 --------------------------------------------------------------------------------
 MILESTONES for Release 1.1
 --------------------------------------------------------------------------------
 
-* Template library:
-  - Include C interface. _normal_
+* Include "scratch mode". _normal_
+* Run in background. _low_
 
 
 --------------------------------------------------------------------------------
