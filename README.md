@@ -29,7 +29,7 @@ _Please read the release notes below._
 
 --------------------------------------------------------------------------------
 
-README for lua-support.vim (Version 1.0) / February 08 2016
+README for lua-support.vim (Version 1.0) / July 23 2016
 ================================================================================
 
   *  INSTALLATION
