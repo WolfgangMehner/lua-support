@@ -1,4 +1,4 @@
-README for lua-support.vim (Version 1.0) / July 23 2016
+README for lua-support.vim (Version 1.0.1pre) / April 14 2017
 ================================================================================
 
   *  INSTALLATION
@@ -18,7 +18,7 @@ Please read the documentation.
 
 This plug-in can be used with Vim version 7.x.
 
-Lua is: Copyright 1994-2015 Lua.org, PUC-Rio.
+Lua is: Copyright 1994-2016 Lua.org, PUC-Rio.
 
 
 --------------------------------------------------------------------------------
@@ -198,21 +198,13 @@ Any problems? See the TROUBLESHOOTING section at the end of the help file
 RELEASE NOTES
 ================================================================================
 
-RELEASE NOTES FOR VERSION 1.0
+RELEASE NOTES FOR VERSION 1.0.1pre
 ----------------------------------------------------------------------
-- The default style used by the template library is now 'Lua_52'.
-  You can change it in the template customization file (see below).
-  The jump to the online help is also set up for Lua 5.2.
-- Rename 'g:Lua_GlbTemplateFile' into 'g:Lua_GlobalTemplateFile'.
-- Rename 'g:Lua_LclTemplateFile' into 'g:Lua_LocalTemplateFile'.
-- Add optional custom templates 'g:Lua_CustomTemplateFile'.
-- Add template personalization file and setup wizard.
-- Add Lua's reference manual in Vim's help format.
-- Add maps and menu entries to jump to it conveniently.
-- New and improved templates, add Lua 5.3.
-- Add Lua C-API templates.
-- Fix running and compiling scripts under Windows.
-- Minor improvements.
+- The templates which are inserted into new files as file skeletons can be
+  specified in the templates library, via the property:
+    Lua::FileSkeleton::Script
+- Update Lua's reference manual to 5.3.4.
+- Minor changes and bugfixes.
 
 
 RELEASE NOTES FOR OLDER VERSIONS

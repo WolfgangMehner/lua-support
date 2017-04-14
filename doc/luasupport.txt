@@ -1,8 +1,8 @@
-*luasupport.txt*                 Lua Support                       Jul 23 2016
+*luasupport.txt*                 Lua Support                       Apr 14 2017
 
 Lua Support                                          *lua-support* *luasupport*
 
-                             Plug-in version 1.0
+                            Plug-in version 1.0.1pre
                         for Vim version 7.0 and above
                  Wolfgang Mehner <wolfgang-mehner at web.de>
 
@@ -15,7 +15,7 @@ functions.
 See the chapter |luasupport-introduction| for a quick overview and a short
 guide to this documentation.
 
-Lua is: Copyright 1994-2015 Lua.org, PUC-Rio.
+Lua is: Copyright 1994-2016 Lua.org, PUC-Rio.
 
 ==============================================================================
 0.  TABLE OF CONTENTS                            *luasupport-support-contents*
@@ -819,6 +819,21 @@ can be switched off by adding this to the .vimrc: >
 The behavior can be changed on the fly by settings the variable to a different
 value on the command line.
 
+                                                   *Lua::FileSkeleton::Script*
+The file skeletons are controlled via this property, which can be set in one
+of the template files: >
+  SetProperty ( 'Lua::FileSkeleton::Script', 'Comments.file description' )
+This inserts only a comment to describe the file. To disable the insertion set
+the property to an empty string: >
+  SetProperty ( 'Lua::FileSkeleton::Script', '' )
+In general, these properties are semicolon-separated lists of templates to be
+inserted: >
+  SetProperty ( 'Lua::FileSkeleton::Script', 'Comments.shebang;Comments.file description; ;Files.module' )
+This will insert a shebang, a file description comment, and the module file
+template. If a space appears as an entry in the list, an empty line is
+inserted: >
+  '...; ;...'
+<
                                                   *g:Lua_LineEndCommentColumn*
 The standard column used for end-of-line comments is configured using
 g:Lua_LineEndCommentColumn. The column can then be set individually for each
