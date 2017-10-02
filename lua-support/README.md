@@ -1,4 +1,4 @@
-README for lua-support.vim (Version 1.0.1pre) / April 14 2017
+README for lua-support.vim (Version 1.1alpha) / September 25 2017
 ================================================================================
 
   *  INSTALLATION
@@ -198,13 +198,22 @@ Any problems? See the TROUBLESHOOTING section at the end of the help file
 RELEASE NOTES
 ================================================================================
 
-RELEASE NOTES FOR VERSION 1.0.1pre
+RELEASE NOTES FOR VERSION 1.1alpha
 ----------------------------------------------------------------------
+- Add output method 'terminal' for running scripts in a terminal window
+  (requires +terminal).
 - The templates which are inserted into new files as file skeletons can be
   specified in the templates library, via the property:
     Lua::FileSkeleton::Script
+- Add configuration variables 'g:Lua_Ctrl_j' and 'g:Lua_Ctrl_d' to control the
+  creation of the CTRL+J and CTRL+D maps.
 - Update Lua's reference manual to 5.3.4.
+- Move the filetype plug-in for lua to 'lua-support/rc'.
 - Minor changes and bugfixes.
+
+Note: The filetype plug-in has been moved, and is thus not loaded automatically
+anymore. Copy it from 'lua-support/rc/' to 'ftplugin' or add the commands there
+to your own filetype plug-in.
 
 
 RELEASE NOTES FOR OLDER VERSIONS
@@ -244,10 +253,6 @@ ___The following files and extensions are for convenience only.___
 ___lua-support.vim will work without them.___
 ___The settings are explained in the files themselves.___
 
-    ftplugin/lua.vim
-                        Example filetype plug-in for Lua:
-                          defines additional maps
-
     ftdetect/template.vim
     ftplugin/template.vim
     syntax/template.vim
@@ -273,6 +278,10 @@ ___The settings are explained in the files themselves.___
                         Suggestion for the configuration file .vimrc:
                           hot keys, tabstop, use of dictionaries,
                           the setup of the plug-in, ...
+
+    lua-support/rc/lua.vim
+                        Example filetype plug-in for Lua:
+                          defines additional maps
 
     lua-support/rc/*.templates
                         Sample template files for customization. Used by the
