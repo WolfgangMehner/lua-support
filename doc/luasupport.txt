@@ -1,4 +1,4 @@
-*luasupport.txt*                 Lua Support                       Sep 25 2017
+*luasupport.txt*                 Lua Support                       Oct 13 2017
 
 Lua Support                                          *lua-support* *luasupport*
 
@@ -598,7 +598,7 @@ set in the .vimrc file.
  ----------------------------------------------------------------------------
   |g:Lua_BinPath|             ''            the path to the Lua binaries (^1)
   |g:Lua_Executable|          'lua'         the lua executable (^1)
-  |g:Lua_OutputMethod|        'vim-io'      the method for running Lua
+  |g:Lua_OutputMethod|        (see below)   the method for running Lua
   |g:Lua_CompilerExec|        'luac'        the luac executable (^1)
   |g:Lua_CompiledExtension|   'luac'        extension used for compile chunks
 
@@ -628,11 +628,13 @@ set in the .vimrc file.
 
   g:Xterm_Executable        'xterm'       the xterm executable (^2)
   g:Xterm_Options           '...'         the xterm default settings (^2)
+
+  |g:Templates_InternetBrowserExec|         the browser executable
+  |g:Templates_InternetBrowserFlags|        additional browser flags
  ----------------------------------------------------------------------------
 
-Further customization is carried out in the template library:
-- |luasupport-config-template-cstm|
-- |luasupport-config-browser|
+Further customization is carried out in the template library, see
+|luasupport-config-template-cstm| and |luasupport-config-comments|.
 
 (^1)
   The Unix defaults are as follows:
@@ -718,12 +720,13 @@ The initial method for output redirection can be set via g:Lua_OutputMethod: >
 Afterwards, it can be changed on the fly using the menu entries or the map
 "\ro" (see |luasupport-usage-run|).
 
-Use the mode 'vim-io' for scripts with little input and output. The mode
+Use the mode 'cmd-line' for scripts with little input and output. The mode
 'xterm' runs the command in a separate xterm, which also supports input, but
 does not block the editor. The output is available until the window is closed.
-The modes 'vim-qf' and 'buffer' do not support interactive input, but provide
-quickfix support. With 'buffer' the output is redirected into a buffer, named
-"Lua Output", and thus is available for detailed analysis afterwards.
+The modes 'quickfix' and 'buffer' do not support interactive input, but
+provide quickfix support. With 'buffer' the output is redirected into a
+buffer, named "Lua Output", and thus is available for detailed analysis
+afterwards.
 
 The command can be run in a |terminal| window, if Vim is compiled with the
 |+terminal| feature. The output can be loaded into quickfix, using the maps
@@ -733,17 +736,17 @@ The possible settings are listed below:
 
   Value               Meaning
  ----------------------------------------------------------------------------
-  'vim-io' (default)  run on the Vim command-line (supports input operations)
-  'vim-qf'            print output on the Vim cmd.-line (supports |quickfix|)
   'buffer'            redirect the output into a buffer (supports |quickfix|)
-  'xterm' (^1)        run in a separate xterm (supports input operations)
-
+  'cmd-line' (^1)     run on the Vim command-line (supports input operations)
+  'quickfix'          print output or start quickfix (supports |quickfix|)
   'terminal' (^2)     run in a terminal window (support input operations
                        and quickfix, via the maps \qf and \qj)
+  'xterm' (^3)        run in a separate xterm (supports input operations)
  ----------------------------------------------------------------------------
 
-(^1) UNIX only, see |luasupport-config-xterm|
-(^2) requires |+terminal|
+(^1) default for Vim/gVim, not in Neovim
+(^2) default for Neovim, requires |+terminal| or Neovim
+(^3) UNIX only, see |luasupport-config-xterm|
 
 ------------------------------------------------------------------------------
 
@@ -1081,9 +1084,9 @@ A.  TROUBLESHOOTING - KNOWN ISSUES                *luasupport-troubleshooting*
 ==============================================================================
 
 * I do not see any new main menu item.
-  - The menu is only created upon opening the first Lua file (*.m).
+  - The menu is only created upon opening the first Lua file (*.lua).
     This behavior can be changed:
-      :help luasupport-config-menus
+      :help |luasupport-config-menus|
   - Was the archive extracted into the right directory?
     See the section INSTALLATION in lua-support/README.md.
   - Loading of plug-in files must be enabled. If not use
@@ -1122,7 +1125,7 @@ Fritz Mehner (vim.org user name: mehner) for a number of things:
   well
 
 Luis Carvalho (Kozure):
-- the idea for suppling Lua's reference manual in Vim's help format is taken
+- the idea for supplying Lua's reference manual in Vim's help format is taken
   from his plug-in "luarefvim", which contains previous versions of the
   reference manual
   ( http://vim.sourceforge.net/scripts/script.php?script_id=1291 )

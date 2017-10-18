@@ -568,6 +568,9 @@ endfunction   " ----------  end of function s:MakeExecutable  ----------
 let s:MSWIN = has("win16") || has("win32")   || has("win64")     || has("win95")
 let s:UNIX  = has("unix")  || has("macunix") || has("win32unix")
 
+let s:NEOVIM = has("nvim")
+let s:VIM8   = ! s:NEOVIM && v:version >= 800
+
 let s:installation           = '*undefined*'    " 'local' or 'system'
 let s:plugin_dir             = ''               " the directory hosting ftplugin/ plugin/ lua-support/ ...
 let s:Lua_GlobalTemplateFile = ''               " the global templates, undefined for s:installation == 'local'
@@ -641,18 +644,7 @@ let s:CmdLineEscChar = ' |"\'
 "
 let s:Lua_LoadMenus             = 'auto'       " load the menus?
 let s:Lua_RootMenu              = '&Lua'       " name of the root menu
-"
-if s:MSWIN
-	let s:Lua_OutputMethodList = [ 'vim-io', 'vim-qf', 'buffer' ]
-else
-	let s:Lua_OutputMethodList = [ 'vim-io', 'vim-qf', 'buffer', 'xterm' ]
-endif
-if has ( 'terminal' ) && ! s:MSWIN              " :TODO:25.09.2017 16:16:WM: enable Windows, check how to start jobs with arguments under Windows
-	let s:Lua_OutputMethodList += [ 'terminal' ]
-endif
-call sort ( s:Lua_OutputMethodList )
-let s:Lua_OutputMethod          = 'vim-io'     " 'vim-io', 'vim-qf', 'buffer', or ... (see 's:Lua_OutputMethodList')
-let s:Lua_DirectRun             = 'no'         " 'yes' or 'no'
+
 let s:Lua_LineEndCommColDefault = 49
 let s:Lua_CommentLabel          = "BlockCommentNo_"
 let s:Lua_SnippetDir            = s:plugin_dir.'/lua-support/codesnippets/'
@@ -693,8 +685,6 @@ call s:GetGlobalSetting ( 'Lua_LocalTemplateFile' )
 call s:GetGlobalSetting ( 'Lua_CustomTemplateFile' )
 call s:GetGlobalSetting ( 'Lua_LoadMenus' )
 call s:GetGlobalSetting ( 'Lua_RootMenu' )
-call s:GetGlobalSetting ( 'Lua_OutputMethod' )
-call s:GetGlobalSetting ( 'Lua_DirectRun' )
 call s:GetGlobalSetting ( 'Lua_Executable' )
 call s:GetGlobalSetting ( 'Lua_CompilerExec' )
 call s:GetGlobalSetting ( 'Lua_LineEndCommColDefault' )
@@ -716,10 +706,43 @@ let s:Lua_GlobalTemplateFile = expand ( s:Lua_GlobalTemplateFile )
 let s:Lua_LocalTemplateFile  = expand ( s:Lua_LocalTemplateFile )
 let s:Lua_CustomTemplateFile = expand ( s:Lua_CustomTemplateFile )
 let s:Lua_SnippetDir         = expand ( s:Lua_SnippetDir )
-"
+
+"-------------------------------------------------------------------------------
+" == Output method ==   {{{2
+"-------------------------------------------------------------------------------
+
+if s:NEOVIM
+	" can not use 'cmd-line' in Neovim, since :! is not interactive
+	let s:Lua_OutputMethodList = [ 'quickfix', 'buffer', 'terminal' ]
+	let s:Lua_OutputMethod     = 'terminal'       " one of 's:Lua_OutputMethodList'
+else
+	let s:Lua_OutputMethodList = [ 'cmd-line', 'quickfix', 'buffer' ]
+	let s:Lua_OutputMethod     = 'cmd-line'       " one of 's:Lua_OutputMethodList'
+endif
+if ! s:MSWIN
+	let s:Lua_OutputMethodList += [ 'xterm' ]
+endif
+if has ( 'terminal' ) && ! s:MSWIN              " :TODO:25.09.2017 16:16:WM: enable Windows, check how to start jobs with arguments under Windows
+	let s:Lua_OutputMethodList += [ 'terminal' ]
+endif
+call sort ( s:Lua_OutputMethodList )
+let s:Lua_DirectRun = 'no'                      " 'yes' or 'no'
+
+call s:GetGlobalSetting ( 'Lua_DirectRun' )
+call s:GetGlobalSetting ( 'Lua_OutputMethod' )
+
+" adapt for backwards compatibility
+if s:Lua_OutputMethod == 'vim-io' && s:NEOVIM
+	let s:Lua_OutputMethod = 'terminal'
+elseif s:Lua_OutputMethod == 'vim-io'
+	let s:Lua_OutputMethod = 'cmd-line'
+elseif s:Lua_OutputMethod == 'vim-qf'
+	let s:Lua_OutputMethod = 'quickfix'
+endif
+
 " }}}2
 "-------------------------------------------------------------------------------
-"
+
 "-------------------------------------------------------------------------------
 " s:EndOfLineComment : Append end-of-line comment.   {{{1
 "-------------------------------------------------------------------------------
@@ -1234,16 +1257,16 @@ function! s:Run ( args )
 
 	let exec = s:ShellEscExec ( exec )
 
-	if s:Lua_OutputMethod == 'vim-io'
-		"
-		" method : "vim - interactive"
-		"
+	if s:Lua_OutputMethod == 'cmd-line'
+
+		" method : "cmd.-line"
+
 		exe '!'.exec.' '.script.' '.a:args
-		"
-	elseif s:Lua_OutputMethod == 'vim-qf'
-		"
-		" method : "vim - quickfix"
-		"
+
+	elseif s:Lua_OutputMethod == 'quickfix'
+
+		" method : "quickfix"
+
 		" run script
 		let lua_output = system ( exec.' '.script.' '.a:args )
 		"
@@ -1345,9 +1368,16 @@ function! s:Run ( args )
 
 		let title = 'Lua Terminal - '.expand( '%:t' )
 
-		let buf_nr = term_start ( arg_list, {
-					\ 'term_name' : title,
-					\ } )
+		if s:NEOVIM
+			" :TODO:11.10.2017 18:03:WM: better handling than using 'job_id', but ensures
+			" successful operation for know
+			above new
+			let job_id = termopen ( arg_list, {} )
+
+			silent exe 'file '.fnameescape( title.' -'.job_id.'-' )
+		else
+			call term_start ( arg_list, { 'term_name' : title, } )
+		endif
 
 		call Lua_SetMapLeader ()
 
@@ -1369,16 +1399,18 @@ function! s:Run ( args )
 
 		" method : "xterm"
 
-		let title = 'Lua'
+		if s:Xterm_Executable =~ '\cxterm'
+			let title = ' -title Lua'
+		else
+			let title = ''
+		endif
 		let args = a:args
 
-		silent exe '!'.s:Xterm_Executable.' '.g:Xterm_Options
-					\ .' -title '.shellescape( title )
+		silent exe '!'.s:Xterm_Executable.' '.g:Xterm_Options.title
 					\ .' -e '.shellescape( exec.' '.script.' '.args.' ; echo "" ; read -p "  ** PRESS ENTER **  " dummy ' ).' &'
+
+		call s:Redraw ( 'r!', '' )                  " redraw in terminal
 	endif
-
-	call s:Redraw ( 'r!', '' )                    " redraw in terminal
-
 endfunction    " ----------  end of function s:Run  ----------
 
 "-------------------------------------------------------------------------------
@@ -1664,10 +1696,10 @@ function! s:SetOutputMethod ( method )
 	"
 	exe 'aunmenu '.s:Lua_RootMenu.'.Run.output\ method.Output\ Method'
 	"
-	if s:Lua_OutputMethod == 'vim-io'
-		let current = 'vim\ io'
-	elseif s:Lua_OutputMethod == 'vim-qf'
-		let current = 'vim\ qf'
+	if s:Lua_OutputMethod == 'cmd-line'
+		let current = 'cmd\.-line'
+	elseif s:Lua_OutputMethod == 'quickfix'
+		let current = 'quickfix'
 	elseif s:Lua_OutputMethod == 'buffer'
 		let current = 'buffer'
 	elseif s:Lua_OutputMethod == 'terminal'
@@ -2009,8 +2041,6 @@ function! s:InitMenus()
 	exe ihead.'&compile<TAB>'.esc_mapl.'rc              <Esc>:call <SID>Compile("compile")<CR>'
 	exe ahead.'chec&k\ code<TAB>'.esc_mapl.'rk               :call <SID>Compile("check")<CR>'
 	exe ihead.'chec&k\ code<TAB>'.esc_mapl.'rk          <Esc>:call <SID>Compile("check")<CR>'
-	exe ahead.'make\ &executable<TAB>'.esc_mapl.'re          :call <SID>MakeExecutable()<CR>'
-	exe ihead.'make\ &executable<TAB>'.esc_mapl.'re     <Esc>:call <SID>MakeExecutable()<CR>'
 
 	exe ahead.'&buffer\ "Lua\ Output\/Term".buffer\ "Lua\ Output\/Term"  :echo "This is a menu header."<CR>'
 	exe ahead.'&buffer\ "Lua\ Output\/Term".-SepHead-              :'
@@ -2034,6 +2064,8 @@ function! s:InitMenus()
 	exe ihead_loud.'&set\ compiler\ exec\.<TAB>'.esc_mapl.'rsc     <Esc>:LuaCompilerExec<SPACE>'
 	exe ahead.'-Sep02-                                             :'
 
+	exe ahead.'make\ &executable<TAB>'.esc_mapl.'re                :call <SID>MakeExecutable()<CR>'
+	exe ihead.'make\ &executable<TAB>'.esc_mapl.'re           <Esc>:call <SID>MakeExecutable()<CR>'
 	exe ahead.'&hardcopy\ to\ filename\.ps<TAB>'.esc_mapl.'rh      :call <SID>Hardcopy("n")<CR>'
 	exe vhead.'&hardcopy\ to\ filename\.ps<TAB>'.esc_mapl.'rh <C-C>:call <SID>Hardcopy("v")<CR>'
 	exe ihead.'&hardcopy\ to\ filename\.ps<TAB>'.esc_mapl.'rh <C-C>:call <SID>Hardcopy("n")<CR>'
@@ -2043,24 +2075,22 @@ function! s:InitMenus()
 	exe ihead.'&settings<TAB>'.esc_mapl.'rs  <Esc>:call Lua_Settings(0)<CR>'
 
 	" run -> output method
+	let method_menu_entries = [
+				\ [ 'cmd-line', '&cmd\.-line', 'interactive', ],
+				\ [ 'quickfix', '&quickfix',   'quickfix',    ],
+				\ [ 'buffer',   '&buffer',     'quickfix',    ],
+				\ [ 'terminal', '&terminal',   'interact+qf', ],
+				\ [ 'xterm',    '&xterm',      'interactive', ],
+				\ ]
 
-	exe ahead.'output\ method.vim\ &io<TAB>interactive       :call <SID>SetOutputMethod("vim-io")<CR>'
-	exe ihead.'output\ method.vim\ &io<TAB>interactive  <Esc>:call <SID>SetOutputMethod("vim-io")<CR>'
-	exe ahead.'output\ method.vim\ &qf<TAB>quickfix          :call <SID>SetOutputMethod("vim-qf")<CR>'
-	exe ihead.'output\ method.vim\ &qf<TAB>quickfix     <Esc>:call <SID>SetOutputMethod("vim-qf")<CR>'
-	exe ahead.'output\ method.&buffer<TAB>quickfix           :call <SID>SetOutputMethod("buffer")<CR>'
-	exe ihead.'output\ method.&buffer<TAB>quickfix      <Esc>:call <SID>SetOutputMethod("buffer")<CR>'
-	if index ( s:Lua_OutputMethodList, 'terminal' ) > -1
-		exe ahead.'output\ method.&terminal<TAB>interact+qf       :call <SID>SetOutputMethod("terminal")<CR>'
-		exe ihead.'output\ method.&terminal<TAB>interact+qf  <Esc>:call <SID>SetOutputMethod("terminal")<CR>'
-	endif
-	if index ( s:Lua_OutputMethodList, 'xterm' ) > -1
-		exe ahead.'output\ method.&xterm<TAB>interactive       :call <SID>SetOutputMethod("xterm")<CR>'
-		exe ihead.'output\ method.&xterm<TAB>interactive  <Esc>:call <SID>SetOutputMethod("xterm")<CR>'
-	endif
+	for [ method, left, right ] in method_menu_entries
+		if index ( s:Lua_OutputMethodList, method ) > -1
+			exe ahead.'output\ method.'.left.'<TAB>'.right.'       :call <SID>SetOutputMethod("'.method.'")<CR>'
+			exe ihead.'output\ method.'.left.'<TAB>'.right.'  <Esc>:call <SID>SetOutputMethod("'.method.'")<CR>'
+		endif
+	endfor
 
 	" run -> direct run
-
 	exe ahead.'direct\ run.&yes<TAB>use\ executable\ scripts         :call <SID>SetDirectRun("yes")<CR>'
 	exe ihead.'direct\ run.&yes<TAB>use\ executable\ scripts    <Esc>:call <SID>SetDirectRun("yes")<CR>'
 	exe ahead.'direct\ run.&no<TAB>always\ use\ :LuaExecutable       :call <SID>SetDirectRun("no")<CR>'
@@ -2152,11 +2182,19 @@ endfunction    " ----------  end of function s:RemoveMenus  ----------
 "-------------------------------------------------------------------------------
 "
 function! Lua_Settings( verbose )
-	"
+
 	if     s:MSWIN | let sys_name = 'Windows'
 	elseif s:UNIX  | let sys_name = 'UN*X'
 	else           | let sys_name = 'unknown' | endif
-	"
+	if s:NEOVIM
+		let vim_name = 'nvim'
+	else
+		let vim_name = has('gui_running') ? 'gvim' : 'vim'
+		if s:VIM8
+			let vim_name .= '(v8.0)'
+		endif
+	endif
+
 	let lua_exe_status = executable( s:Lua_Executable ) ? '' : ' (not executable)'
 	let luac_exe_status = executable( s:Lua_CompilerExec ) ? '' : ' (not executable)'
 	"
@@ -2181,7 +2219,7 @@ function! Lua_Settings( verbose )
 	endif
 	" plug-in installation, template engine
 	let txt .=
-				\  '      plugin installation :  '.s:installation.' on '.sys_name."\n"
+				\  '      plugin installation :  '.s:installation.' in '.vim_name.' on '.sys_name."\n"
 	" toolbox
 	if s:Lua_UseToolbox == 'yes'
 		let toollist = mmtoolbox#tools#GetList ( s:Lua_Toolbox )

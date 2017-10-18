@@ -100,10 +100,13 @@ filelists_repo.awk = {
 
 filelists.bash = {
 	'autoload/mmtemplates/',
+	'autoload/mmtoolbox/tools.vim',
+	'autoload/mmtoolbox/bash/bashdb.vim',
 	'doc/bashsupport.txt',
 	'doc/templatesupport.txt',
+	'doc/toolbox.txt',
+	'doc/bashdbintegration.txt',
 	'ftdetect/template.vim',
-	'ftplugin/sh.vim',
 	'ftplugin/template.vim',
 	'plugin/bash-support.vim',
 	'syntax/template.vim',
@@ -139,8 +142,6 @@ filelists.c = {
 	'doc/toolboxdoxygen.txt',
 	'doc/toolboxmake.txt',
 	'ftdetect/template.vim',
-	'ftplugin/c.vim',
-	'ftplugin/make.vim',
 	'ftplugin/template.vim',
 	'plugin/c.vim',
 	'syntax/template.vim',
