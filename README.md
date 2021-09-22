@@ -26,7 +26,7 @@ _Please read the release notes below._
 
 --------------------------------------------------------------------------------
 
-README for lua-support.vim (Version 1.1alpha) / February 11 2018
+README for lua-support.vim (Version 1.1alpha) / November 22 2020
 ================================================================================
 
   *  INSTALLATION
@@ -234,7 +234,7 @@ RELEASE NOTES FOR VERSION 1.1alpha
     `Lua::FileSkeleton::Script`
 - Add configuration variables `g:Lua_Ctrl_j` and `g:Lua_Ctrl_d` to control the
   creation of the `CTRL+J` and `CTRL+D` maps.
-- Update Lua's reference manual to 5.3.4.
+- Update Lua's reference manual to 5.3.6.
 - Move the filetype plug-in for lua to `lua-support/rc`.
 - Minor changes and bugfixes.
 
